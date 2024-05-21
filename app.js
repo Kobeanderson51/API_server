@@ -1,70 +1,59 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const { expressjwt: jwtMiddleware } = require('express-jwt');
+const path = require('path');
 const fs = require('fs');
-const bcrypt = require('bcrypt');
-
-require('dotenv').config();
 const app = express();
-const PORT = 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
-const verifyToken = (req, res, next) => {
-    const token = req.headers['authorization'];
-    if (!token) {
-        return res.status(401).json({ errorMessage: 'Token is required' });
-    }
-    jwt.verify(token, JWT_SECRET, (err, decoded) => {
-        if (err) {
-            return res.status(401).json({ errorMessage: 'Invalid token' });
-        }
-        req.user = decoded.user;
-        next();
-    });
-};
+const secret = "supersecret";
+const port = 3002;
 
-const errorHandler = (err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({ errorMessage: 'Internal Server Error' });
-};
+const users = [
+    { id: 1, username: 'asdf', password: 'asdf' },
+    { id: 2, username: 'Kobe', password: 'kobe' },
+];
 
-const users = JSON.parse(fs.readFileSync('users.json', 'utf-8'));
+let cards = [];
+try {
+    const cardsdata = fs.readFileSync('./data/cards.json', 'utf8');
+    cards = JSON.parse(cardsdata).cards;
+} catch (error) {
+    console.error('Error reading cards data:', error);
+}
 
-app.post('/getToken', (req, res) => {
-    const { username, password } = req.body;
-    const user = users.find(u => u.username === username);
-    if (!user || !bcrypt.compareSync(password, user.password)) {
-        return res.status(401).json({ errorMessage: 'Invalid username or password' });
-    }
-    const token = jwt.sign({ user: username }, JWT_SECRET, { expiresIn: '1h' });
-    res.json({ token });
-});
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
 app.get('/', (req, res) => {
-    fs.readFile('index.html', 'utf-8', (err, data) => {
-        if (err) {
-            return res.status(500).json({ errorMessage: 'Internal Server Error' });
-        }
-        res.send(data);
-    });
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-app.get('/cards', (req, res) => {
-    // Implementation for retrieving all cards with optional query parameters for filtering
+app.post('/login', (req, res) => {
+    const { username, password } = req.body;
+    const user = users.find(currUser => currUser.username === username.trim());
+    if (!user || user.password !== password.trim()) {
+        return res.status(401).json({ errMessage: 'Invalid username or password' });
+    }
+    const token = jwt.sign({ username: user.username }, secret, { algorithm: 'HS256', expiresIn: '10d' });
+    return res.json({ token: token });
 });
 
-app.post('/cards/create', verifyToken, (req, res) => {
-    // Implementation for creating a new card
+app.get('/cards', jwtMiddleware({ secret: secret, algorithms: ['HS256'] }), (req, res) => {
+    const filter = req.query.filter?.toLowerCase() || '';
+    const filteredCards = cards.filter(card => card.name.toLowerCase().includes(filter));
+    console.log(req.auth.username, 'is accessing card names');
+    res.json({ cards: filter ? filteredCards : cards });
 });
 
-app.put('/cards/:id', verifyToken, (req, res) => {
-    // Implementation for updating an existing card
+// Error handling middleware
+app.use((err, req, res, next) => {
+    if (err.name === 'UnauthorizedError') {
+        return res.status(401).json({ errMessage: 'Invalid token' });
+    }
+    console.error(err.stack);
+    res.status(500).json({ errMessage: 'Something went wrong' });
 });
 
-app.delete('/cards/:id', verifyToken, (req, res) => {
-    // Implementation for deleting an existing card
-});
-
-app.use(errorHandler);
-
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
 });
