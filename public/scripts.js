@@ -76,7 +76,8 @@ async function getCardInfo() {
         document.getElementById('serverMessage').textContent = result.errMessage;
     }
 }
-
+function createCard() {
+}
 async function login() {
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;

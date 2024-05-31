@@ -8,10 +8,8 @@ const app = express();
 const secret = "supersecret";
 const port = 3002;
 
-const users = [
-    { id: 1, username: 'asdf', password: 'asdf' },
-    { id: 2, username: 'Kobe', password: 'kobe' },
-];
+const user = require('./data/users.json'); 
+const users = user.users;
 
 let cards = [];
 try {
