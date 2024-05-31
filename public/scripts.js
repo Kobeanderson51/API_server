@@ -34,6 +34,7 @@ async function populateCardOptions() {
 
 async function getCourses() {
     const token = localStorage.getItem('token');
+    if (!token) return;
 
     const response = await fetch(`/cards`, {
         method: 'GET',
@@ -55,6 +56,7 @@ async function getCourses() {
 async function getCardInfo() {
     const selectedCardName = document.getElementById('filter').value;
     const token = localStorage.getItem('token');
+    if (!token) return;
 
     const response = await fetch(`/cards?filter=${encodeURIComponent(selectedCardName)}`, {
         method: 'GET',
@@ -76,8 +78,29 @@ async function getCardInfo() {
         document.getElementById('serverMessage').textContent = result.errMessage;
     }
 }
-function createCard() {
+
+async function getRandomCard() {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const response = await fetch(`/cards`, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+
+    const result = await response.json();
+    if (response.ok) {
+        const cards = result.cards;
+        const randomCard = cards[Math.floor(Math.random() * cards.length)];
+        const cardInfoString = `ID: ${randomCard.id}, Name: ${randomCard.name}, Set: ${randomCard.set}, Card Number: ${randomCard.cardNumber}, Type: ${randomCard.type}, Power: ${randomCard.power}, Toughness: ${randomCard.toughness}, Rarity: ${randomCard.rarity}, Cost: ${randomCard.cost}`;
+        document.getElementById('serverMessage').textContent = `Random Card Info:\n${cardInfoString}`;
+    } else {
+        document.getElementById('serverMessage').textContent = result.errMessage;
+    }
 }
+
 async function login() {
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
